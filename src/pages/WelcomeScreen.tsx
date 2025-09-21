@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { ChatInput } from '../components/ChatInput';
 import { useAppContext } from '../context/app';
@@ -16,6 +16,10 @@ export default function WelcomeScreen() {
     config: { systemMessage },
   } = useAppContext();
   const { sendMessage } = useChatContext();
+  const samplePrompts = useMemo(
+    () => getUniqueRandomElements(lang.samplePrompts, SAMPLE_PROMPTS_COUNT),
+    []
+  );
 
   const handleSend = useCallback(
     async (content: string, extra: MessageExtra[] | undefined) => {
@@ -46,10 +50,7 @@ export default function WelcomeScreen() {
         <small>{lang.chatScreen.welcomeNote}</small>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-5/6 sm:max-w-3/4 mt-8">
-          {getUniqueRandomElements(
-            lang.samplePrompts,
-            SAMPLE_PROMPTS_COUNT
-          ).map((text) => (
+          {samplePrompts.map((text) => (
             <button
               key={text}
               className="btn h-auto bg-base-200 font-medium rounded-xl p-2"
