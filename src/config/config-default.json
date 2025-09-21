@@ -1,9 +1,9 @@
 {
   "provider": "llama-cpp",
-  "baseUrl": "",
+  "baseUrl": "https://www.serveurperso.com/ia",
   "apiKey": "",
-  "model": "",
-  "systemMessage": "",
+  "model": "GLM-4-32B-0414",
+  "systemMessage": "Tu es un assistant utile.",
   "initials": "You",
   "pasteLongTextToFileLen": 10000,
   "pdfAsImage": false,
