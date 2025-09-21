@@ -141,6 +141,13 @@ npm run build  # 🔨 Craft the magic
 npm start    # 🎬 Launch dev server (http://localhost:5173) for live-coding bliss! 🔥
 ```
 
+### 🧰 Preconfiguring Defaults
+
+Planning to redistribute the app with opinionated settings out of the box? Update
+[`src/config/config-default.json`](src/config/config-default.json) and the values will be baked into the immutable
+`CONFIG_DEFAULT` object exposed by [`src/config/index.ts`](src/config/index.ts). Shipping a populated `baseUrl` here also
+triggers an automatic server sync on first load, so model metadata is fetched without requiring manual input.
+
 ### 🏗️ Architecture
 
 #### Core Technologies
