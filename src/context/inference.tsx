@@ -145,10 +145,13 @@ export const InferenceContextProvider = ({
     if (!deepEqual(currentConfigRef.current, config)) {
       updateApi(config);
     }
-    if (
-      prevConfig.baseUrl !== config.baseUrl ||
-      prevConfig.apiKey !== config.apiKey
-    ) {
+    const isInitialConfig = Object.is(prevConfig, CONFIG_DEFAULT);
+    const baseUrlChanged = prevConfig.baseUrl !== config.baseUrl;
+    const apiKeyChanged = prevConfig.apiKey !== config.apiKey;
+    const shouldSync =
+      !!config.baseUrl && (baseUrlChanged || apiKeyChanged || isInitialConfig);
+
+    if (shouldSync) {
       syncServer(config);
     }
     currentConfigRef.current = config;
