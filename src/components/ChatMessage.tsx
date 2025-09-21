@@ -16,7 +16,7 @@ import { useAppContext } from '../context/app';
 import { useChatContext } from '../context/chat';
 import StorageUtils from '../database';
 import { useChatExtraContext } from '../hooks/useChatExtraContext';
-import lang from '../lang';
+import * as lang from '../lang/en.json';
 import { Message, MessageExtra, PendingMessage } from '../types';
 import {
   classNames,

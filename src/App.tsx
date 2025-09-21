@@ -22,7 +22,7 @@ import {
 } from './context/inference';
 import { useDebouncedCallback } from './hooks/useDebouncedCallback';
 import { usePWAUpdatePrompt } from './hooks/usePWAUpdatePrompt';
-import lang from './lang';
+import * as lang from './lang/en.json';
 import ChatScreen from './pages/ChatScreen';
 import Settings from './pages/Settings';
 import WelcomeScreen from './pages/WelcomeScreen';

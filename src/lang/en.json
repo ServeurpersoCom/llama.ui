@@ -3,7 +3,7 @@
   "header.title.settings": "Settings",
   "chatScreen": {
     "welcome": "Hi,",
-    "welcomeNote": "How can I help you?"
+    "welcomeNote": "how can I help you?"
   },
   "chatMessage": {
     "systemLabel": "System",
