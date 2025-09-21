@@ -8,13 +8,13 @@
   "type": "module",
   "scripts": {
     "prestart": "npm run format",
-    "start": "vite",
-    "build": "npm run format && tsc -b && vite build",
-    "build:prod": "tsc -b && vite build",
+    "start": "node ./scripts/vite-with-lang.mjs dev",
+    "build": "npm run format && tsc -b && node ./scripts/vite-with-lang.mjs build",
+    "build:prod": "tsc -b && node ./scripts/vite-with-lang.mjs build",
     "format": "eslint . && prettier --write .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "preview": "npm run build && vite preview"
+    "preview": "npm run build && node ./scripts/vite-with-lang.mjs preview"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

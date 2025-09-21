@@ -4,7 +4,7 @@ import { ChatInput } from '../components/ChatInput';
 import { useAppContext } from '../context/app';
 import { CallbackGeneratedChunk, useChatContext } from '../context/chat';
 import StorageUtils from '../database';
-import * as lang from '../lang/en.json';
+import lang from '../lang';
 import { MessageExtra } from '../types';
 import { getUniqueRandomElements } from '../utils';
 

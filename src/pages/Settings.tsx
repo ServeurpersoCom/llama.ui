@@ -52,7 +52,7 @@ import { useAppContext } from '../context/app';
 import { useChatContext } from '../context/chat';
 import { useInferenceContext } from '../context/inference';
 import { useDebouncedCallback } from '../hooks/useDebouncedCallback';
-import lang from '../lang/en.json';
+import lang from '../lang';
 import {
   Configuration,
   ConfigurationKey,
