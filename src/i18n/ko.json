@@ -209,6 +209,14 @@
         "label": "기본 URL",
         "note": "독립 실행형 서버를 사용하는 경우 기본 URL을 설정합니다."
       },
+      "useWebSocketTunnel": {
+        "label": "WebSocket 터널 사용",
+        "note": "스트리밍 응답을 경량 WebSocket 프록시를 통해 전달합니다."
+      },
+      "webSocketUrl": {
+        "label": "WebSocket 터널 URL",
+        "note": "터널 서비스가 제공하는 전체 ws:// 또는 wss:// 엔드포인트."
+      },
       "apiKey": {
         "label": "API 키",
         "note": "서버에 --api-key 옵션을 사용하는 경우 API 키를 설정합니다."

@@ -209,6 +209,14 @@
         "label": "ベースURL",
         "note": "スタンドアロンサーバーを使用している場合は、ベースURLを設定してください。"
       },
+      "useWebSocketTunnel": {
+        "label": "WebSocket トンネルを使用する",
+        "note": "ストリーミング応答を軽量な WebSocket プロキシ経由で転送します。"
+      },
+      "webSocketUrl": {
+        "label": "WebSocket トンネル URL",
+        "note": "トンネルサービスで公開されている ws:// または wss:// の完全なエンドポイント。"
+      },
       "apiKey": {
         "label": "APIキー",
         "note": "サーバーで--api-keyオプションを使用している場合は、APIキーを設定してください。"

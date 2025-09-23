@@ -209,6 +209,14 @@
         "label": "基本 URL",
         "note": "如果您使用独立服务器，请设置基本 URL。"
       },
+      "useWebSocketTunnel": {
+        "label": "使用 WebSocket 隧道",
+        "note": "通过轻量级 WebSocket 代理转发流式响应。"
+      },
+      "webSocketUrl": {
+        "label": "WebSocket 隧道 URL",
+        "note": "由隧道服务提供的完整 ws:// 或 wss:// 端点。"
+      },
       "apiKey": {
         "label": "API 密钥",
         "note": "如果您使用服务器的 --api-key 选项，请设置 API 密钥。"
