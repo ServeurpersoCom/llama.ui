@@ -1,6 +1,8 @@
 {
   "provider": "llama-cpp",
   "baseUrl": "https://www.serveurperso.com/ia",
+  "useWebSocketTunnel": true,
+  "webSocketUrl": "wss://www.serveurperso.com/8085?transport=websocket",
   "apiKey": "",
   "model": "GLM-4-32B-0414",
   "systemMessage": "Tu es un assistant utile.",
