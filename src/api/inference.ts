@@ -1,9 +1,3 @@
-// @ts-expect-error this package does not have typing
-import TextLineStream from 'textlinestream';
-
-// ponyfill for missing ReadableStream asyncIterator on Safari
-import { asyncIterator } from '@sec-ant/readable-stream/ponyfill/asyncIterator';
-
 import { isDev } from '../config';
 import {
   Configuration,
@@ -14,6 +8,8 @@ import {
   Message,
 } from '../types';
 import { normalizeUrl, splitMessageContent } from '../utils';
+import { mapSSEStream, getSSEStreamAsync, SSEEvent } from './sseStream';
+import { ResponseLike, WebSocketTunnelClient } from './websocketTunnel';
 
 // --- Helper Functions ---
 
@@ -117,38 +113,20 @@ function filterThoughtFromMsgs(
   });
 }
 
-/**
- * Creates an async generator for processing Server-Sent Events (SSE) streams.
- * Handles parsing of event data and error conditions from the stream.
- *
- * @param fetchResponse - Response object from a fetch request expecting SSE
- * @returns Async generator yielding parsed event data
- *
- * @throws When encountering error messages in the stream
- *
- * @remarks
- * This implementation uses TextLineStream and asyncIterator ponyfill to handle
- * streaming responses in environments like Safari that lack native support. [[2]]
- */
-async function* getSSEStreamAsync(fetchResponse: Response) {
-  if (!fetchResponse.body) throw new Error('Response body is empty');
-  const lines: ReadableStream<string> = fetchResponse.body
-    .pipeThrough(new TextDecoderStream())
-    .pipeThrough(new TextLineStream());
-  // @ts-expect-error asyncIterator complains about type, but it should work
-  for await (const line of asyncIterator(lines)) {
-    //if (isDev) console.debug({ line });
-    if (line.startsWith('data:') && !line.endsWith('[DONE]')) {
-      const data = JSON.parse(line.slice(5));
-      yield data;
-    } else if (line.startsWith('error:')) {
-      const data = JSON.parse(line.slice(6));
-      throw new Error(data.message || 'Unknown error');
-    }
+const noResponse = new Response(null, { status: 444 });
+
+function parseChatCompletionEvent(event: SSEEvent) {
+  if (event.data === '[DONE]') {
+    return undefined;
+  }
+  try {
+    return JSON.parse(event.data);
+  } catch (err) {
+    throw err instanceof Error
+      ? err
+      : new Error('Unable to parse SSE payload received from upstream');
   }
 }
-
-const noResponse = new Response(null, { status: 444 });
 
 // --- Main Inference API Functions ---
 
@@ -159,6 +137,8 @@ const noResponse = new Response(null, { status: 444 });
 class InferenceApiProvider {
   /** Configuration settings for API interactions */
   config: Configuration;
+  /** Optional tunnel client used to proxy HTTP/SSE requests over WebSocket */
+  private readonly tunnelClient?: WebSocketTunnelClient;
 
   /**
    * Private constructor to enforce factory pattern usage
@@ -167,6 +147,9 @@ class InferenceApiProvider {
    */
   private constructor(config: Configuration) {
     this.config = config;
+    if (config.useWebSocketTunnel && config.webSocketUrl) {
+      this.tunnelClient = new WebSocketTunnelClient(config.webSocketUrl);
+    }
   }
 
   /**
@@ -189,12 +172,25 @@ class InferenceApiProvider {
    * In development mode, logs the server properties for debugging purposes. [[7]]
    */
   async getServerProps(): Promise<LlamaCppServerProps> {
-    let fetchResponse = noResponse;
+    const endpoint = normalizeUrl('/props', this.config.baseUrl);
+    const headers = this.getHeaders();
+    const abortSignal = AbortSignal.timeout(1000);
+
+    let fetchResponse: ResponseLike = noResponse;
     try {
-      fetchResponse = await fetch(normalizeUrl('/props', this.config.baseUrl), {
-        headers: this.getHeaders(),
-        signal: AbortSignal.timeout(1000),
-      });
+      if (this.tunnelClient) {
+        fetchResponse = await this.tunnelClient.request({
+          targetUrl: endpoint,
+          method: 'GET',
+          headers,
+          abortSignal,
+        });
+      } else {
+        fetchResponse = await fetch(endpoint, {
+          headers,
+          signal: abortSignal,
+        });
+      }
     } catch {
       // do nothing
     }
@@ -282,23 +278,37 @@ class InferenceApiProvider {
     if (this.config.custom.trim().length)
       params = Object.assign(params, JSON.parse(this.config.custom));
 
+    const endpoint = normalizeUrl('/v1/chat/completions', this.config.baseUrl);
+    const headers = this.getHeaders();
+
+    if (this.tunnelClient) {
+      return this.tunnelClient.stream({
+        targetUrl: endpoint,
+        method: 'POST',
+        headers,
+        body: params,
+        abortSignal,
+        parser: parseChatCompletionEvent,
+      });
+    }
+
     // send request
     let fetchResponse = noResponse;
     try {
-      fetchResponse = await fetch(
-        normalizeUrl('/v1/chat/completions', this.config.baseUrl),
-        {
-          method: 'POST',
-          headers: this.getHeaders(),
-          body: JSON.stringify(params),
-          signal: abortSignal,
-        }
-      );
+      fetchResponse = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(params),
+        signal: abortSignal,
+      });
     } catch {
       // do nothing
     }
     await this.isErrorResponse(fetchResponse);
-    return getSSEStreamAsync(fetchResponse);
+    return mapSSEStream(
+      getSSEStreamAsync(fetchResponse),
+      parseChatCompletionEvent
+    );
   }
 
   /**
@@ -308,16 +318,26 @@ class InferenceApiProvider {
    * @throws When the API returns a non-200 status or contains error data
    */
   async v1Models(): Promise<InferenceApiModel[]> {
-    let fetchResponse = noResponse;
+    const endpoint = normalizeUrl('/v1/models', this.config.baseUrl);
+    const headers = this.getHeaders();
+    const abortSignal = AbortSignal.timeout(1000);
+
+    let fetchResponse: ResponseLike = noResponse;
     try {
-      fetchResponse = await fetch(
-        normalizeUrl('/v1/models', this.config.baseUrl),
-        {
+      if (this.tunnelClient) {
+        fetchResponse = await this.tunnelClient.request({
+          targetUrl: endpoint,
           method: 'GET',
-          headers: this.getHeaders(),
-          signal: AbortSignal.timeout(1000),
-        }
-      );
+          headers,
+          abortSignal,
+        });
+      } else {
+        fetchResponse = await fetch(endpoint, {
+          method: 'GET',
+          headers,
+          signal: abortSignal,
+        });
+      }
     } catch {
       // do nothing
     }
@@ -367,8 +387,8 @@ class InferenceApiProvider {
    * @throws Error if status is not Success
    * @private
    */
-  private async isErrorResponse(response: Response) {
-    if (response.status === 200) return;
+  private async isErrorResponse(response: ResponseLike) {
+    if (response.status >= 200 && response.status < 300) return;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let body: any = {};

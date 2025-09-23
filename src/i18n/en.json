@@ -27,6 +27,14 @@
         "label": "Base URL",
         "note": "Set the Base URL if you are using standalone server."
       },
+      "useWebSocketTunnel": {
+        "label": "Use WebSocket tunnel",
+        "note": "Forward streaming responses through a lightweight WebSocket proxy."
+      },
+      "webSocketUrl": {
+        "label": "WebSocket tunnel URL",
+        "note": "Full ws:// or wss:// endpoint exposed by your tunnel service."
+      },
       "apiKey": {
         "label": "API Key",
         "note": "Set the API Key if you are using --api-key option for the server."

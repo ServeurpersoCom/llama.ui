@@ -27,6 +27,14 @@
         "label": "URL base",
         "note": "Defina o URL base se você estiver usando o servidor independente."
       },
+      "useWebSocketTunnel": {
+        "label": "Usar túnel WebSocket",
+        "note": "Encaminha respostas em streaming por meio de um proxy WebSocket leve."
+      },
+      "webSocketUrl": {
+        "label": "URL do túnel WebSocket",
+        "note": "Endpoint completo ws:// ou wss:// exposto pelo seu serviço de túnel."
+      },
       "apiKey": {
         "label": "Chave da API",
         "note": "Defina a tecla API se você estiver usando-Aapi-Key Opção para o servidor."

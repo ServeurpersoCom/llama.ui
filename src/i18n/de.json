@@ -27,6 +27,14 @@
         "label": "Basis -URL",
         "note": "Stellen Sie die Basis -URL fest, wenn Sie den Standalone -Server verwenden."
       },
+      "useWebSocketTunnel": {
+        "label": "WebSocket-Tunnel verwenden",
+        "note": "Leitet Streaming-Antworten über einen schlanken WebSocket-Proxy weiter."
+      },
+      "webSocketUrl": {
+        "label": "WebSocket-Tunnel-URL",
+        "note": "Vollständiger ws://- oder wss://-Endpunkt Ihres Tunnel-Dienstes."
+      },
       "apiKey": {
         "label": "API -Schlüssel",
         "note": "Legen Sie die API-Taste fest, wenn Sie die Option-API-Key-Option für den Server verwenden."
