@@ -227,6 +227,12 @@ const getSettingTabsConfiguration = (
         'baseUrl',
         !INFERENCE_PROVIDERS[config.provider]?.allowCustomBaseUrl
       ),
+      toInput(SettingInputType.CHECKBOX, 'useWebSocketTunnel'),
+      toInput(
+        SettingInputType.SHORT_INPUT,
+        'webSocketUrl',
+        !config.useWebSocketTunnel
+      ),
       toInput(SettingInputType.SHORT_INPUT, 'apiKey'),
       toDropdown(
         'model',

@@ -209,6 +209,14 @@
         "label": "URL de base",
         "note": "Définissez l'URL de base si vous utilisez un serveur autonome."
       },
+      "useWebSocketTunnel": {
+        "label": "Utiliser un tunnel WebSocket",
+        "note": "Redirige les réponses en streaming via un proxy WebSocket léger."
+      },
+      "webSocketUrl": {
+        "label": "URL du tunnel WebSocket",
+        "note": "Point d'accès ws:// ou wss:// exposé par votre service de tunnel."
+      },
       "apiKey": {
         "label": "Clé API",
         "note": "Définissez la clé API si vous utilisez l'option --api-key pour le serveur."

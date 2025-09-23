@@ -8,6 +8,8 @@ export type ProviderOption = {
 export interface Configuration {
   provider: string;
   baseUrl: string;
+  useWebSocketTunnel: boolean;
+  webSocketUrl: string;
   apiKey: string;
   model: string;
   systemMessage: string;
