@@ -1,7 +1,7 @@
 import * as pdfjs from 'pdfjs-dist';
 import pdfjsWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { TextContent, TextItem } from 'pdfjs-dist/types/src/display/api';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAppContext } from '../context/app';
 import { useInferenceContext } from '../context/inference';
@@ -33,6 +33,7 @@ export function useChatExtraContext(
   } = useAppContext();
   const { serverProps } = useInferenceContext();
   const [items, setItems] = useState<MessageExtra[]>(initialItems);
+  const hasShownVisionWarningRef = useRef(false);
 
   const addItems = (newItems: MessageExtra[]) => {
     setItems((prev) => [...prev, ...newItems]);
@@ -48,6 +49,15 @@ export function useChatExtraContext(
 
   const isSupportVision = serverProps?.modalities?.vision;
 
+  const warnIfVisionUnsupported = () => {
+    if (isSupportVision === false && !hasShownVisionWarningRef.current) {
+      toast(
+        'Multimodal is not supported by this server or model. The upload may fail until a compatible model is loaded.'
+      );
+      hasShownVisionWarningRef.current = true;
+    }
+  };
+
   const onFileAdded = async (files: File[]) => {
     try {
       for (const file of files) {
@@ -61,11 +71,7 @@ export function useChatExtraContext(
         }
 
         if (mimeType.startsWith('image/')) {
-          if (!isSupportVision) {
-            toast.error('Multimodal is not supported by this server or model.');
-            break;
-          }
-
+          warnIfVisionUnsupported();
           let base64Url = await getFileAsBase64(file);
           if (mimeType === 'image/svg+xml') {
             // Convert SVG to PNG
@@ -99,12 +105,11 @@ export function useChatExtraContext(
           ]);
         } else if (mimeType.startsWith('application/pdf')) {
           if (pdfAsImage && !isSupportVision) {
+            warnIfVisionUnsupported();
             toast(
               'Multimodal is not supported, PDF will be converted to text instead of image.'
             );
-            break;
           }
-
           if (pdfAsImage && isSupportVision) {
             // Convert PDF to images
             const base64Urls = await convertPDFToImage(file);
