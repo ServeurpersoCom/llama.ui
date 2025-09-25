@@ -4,7 +4,7 @@
   "useWebSocketTunnel": true,
   "webSocketUrl": "wss://www.serveurperso.com/8085?transport=websocket",
   "apiKey": "",
-  "model": "GLM-4-32B-0414",
+  "model": "Llama-3_3-Nemotron-Super-49B-v1_5",
   "systemMessage": "Tu es un assistant utile.",
   "initials": "You",
   "pasteLongTextToFileLen": 10000,
