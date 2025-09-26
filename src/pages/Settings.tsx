@@ -1471,7 +1471,7 @@ const ImportExportComponent: React.FC<{ onClose: () => void }> = ({
 
       <div className="grid grid-cols-[repeat(2,max-content)] gap-2">
         <button className="btn" onClick={onExport}>
-          <ArrowDownTrayIcon className={ICON_CLASSNAME} />
+          <ArrowUpTrayIcon className={ICON_CLASSNAME} />
           Export
         </button>
 
@@ -1489,7 +1489,7 @@ const ImportExportComponent: React.FC<{ onClose: () => void }> = ({
           tabIndex={0}
           role="button"
         >
-          <ArrowUpTrayIcon className={ICON_CLASSNAME} />
+          <ArrowDownTrayIcon className={ICON_CLASSNAME} />
           Import
         </label>
       </div>
