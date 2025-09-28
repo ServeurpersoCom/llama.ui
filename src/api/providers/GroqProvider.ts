@@ -1,5 +1,6 @@
 import { InferenceApiModel } from '../../types';
 import { CloudOpenAIProvider } from './BaseOpenAIProvider';
+import type { WebSocketTunnelClient } from '../websocketTunnel';
 
 /**
  * Represents a Grok model as returned by the API.
@@ -51,8 +52,12 @@ export class GroqProvider extends CloudOpenAIProvider {
    * const grok = GrokProvider.new('https://api.groq.com/openai', 'sk-xxxxxxxx');
    * ```
    */
-  static new(baseUrl?: string, apiKey: string = ''): GroqProvider {
-    return new GroqProvider(baseUrl, apiKey);
+  static new(
+    baseUrl?: string,
+    apiKey: string = '',
+    tunnelClient?: WebSocketTunnelClient
+  ): GroqProvider {
+    return new GroqProvider(baseUrl, apiKey, tunnelClient);
   }
 
   /**

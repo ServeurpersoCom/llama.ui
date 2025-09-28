@@ -1,5 +1,6 @@
 import { InferenceApiModel, Modality } from '../../types';
 import { CloudOpenAIProvider } from './BaseOpenAIProvider';
+import type { WebSocketTunnelClient } from '../websocketTunnel';
 
 /**
  * Represents a model available via the OpenRouter API.
@@ -62,8 +63,12 @@ export class OpenRouterProvider extends CloudOpenAIProvider {
    * @param apiKey - API key for authentication. Required for most endpoints.
    * @returns A new OpenRouterProvider instance
    */
-  static new(baseUrl?: string, apiKey: string = ''): OpenRouterProvider {
-    return new OpenRouterProvider(baseUrl, apiKey);
+  static new(
+    baseUrl?: string,
+    apiKey: string = '',
+    tunnelClient?: WebSocketTunnelClient
+  ): OpenRouterProvider {
+    return new OpenRouterProvider(baseUrl, apiKey, tunnelClient);
   }
 
   /** @inheritdoc */

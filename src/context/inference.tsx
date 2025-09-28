@@ -50,6 +50,15 @@ function isProviderReady(config: Configuration) {
   );
 }
 
+function getTunnelUrl(config: Configuration): string | undefined {
+  if (!config.useWebSocketTunnel) {
+    return undefined;
+  }
+
+  const trimmed = config.webSocketUrl.trim();
+  return trimmed.length ? trimmed : undefined;
+}
+
 export const InferenceContextProvider = ({
   children,
 }: {
@@ -73,10 +82,12 @@ export const InferenceContextProvider = ({
     }
 
     console.debug('Update Inference API');
+    const tunnelUrl = getTunnelUrl(config);
     const newProvider = getInferenceProvider(
       config.provider,
       config.baseUrl,
-      config.apiKey
+      config.apiKey,
+      tunnelUrl ? { webSocketTunnelUrl: tunnelUrl } : undefined
     );
     setProvider(newProvider);
   }, []);
@@ -91,10 +102,12 @@ export const InferenceContextProvider = ({
       }
 
       console.debug('Fetch models');
+      const tunnelUrl = getTunnelUrl(config);
       const newProvider = getInferenceProvider(
         config.provider,
         config.baseUrl,
-        config.apiKey
+        config.apiKey,
+        tunnelUrl ? { webSocketTunnelUrl: tunnelUrl } : undefined
       );
       let newModels = noModels;
       try {

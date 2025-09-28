@@ -2,6 +2,7 @@ import { isDev } from '../../config';
 import { InferenceApiModel, Modality } from '../../types';
 import { normalizeUrl } from '../../utils';
 import { noResponse } from '../utils';
+import type { ResponseLike, WebSocketTunnelClient } from '../websocketTunnel';
 import { SelfHostedOpenAIProvider } from './BaseOpenAIProvider';
 
 /**
@@ -92,8 +93,12 @@ export class LlamaCppProvider extends SelfHostedOpenAIProvider {
    * const provider = LlamaCppProvider.new("http://localhost:8080");
    * ```
    */
-  static new(baseUrl?: string, apiKey: string = ''): LlamaCppProvider {
-    return new LlamaCppProvider(baseUrl, apiKey);
+  static new(
+    baseUrl?: string,
+    apiKey: string = '',
+    tunnelClient?: WebSocketTunnelClient
+  ): LlamaCppProvider {
+    return new LlamaCppProvider(baseUrl, apiKey, tunnelClient);
   }
 
   /** @inheritdoc */
@@ -161,12 +166,24 @@ export class LlamaCppProvider extends SelfHostedOpenAIProvider {
    * @internal Used internally by {@link getModels} and {@link jsonToModel}.
    */
   private async getServerProps(): Promise<LlamaCppServerProps> {
-    let fetchResponse = noResponse;
+    const targetUrl = normalizeUrl('/props', this.getBaseUrl());
+    const requestSignal = AbortSignal.timeout(1000);
+    const tunnelClient = this.getTunnelClient();
+    let fetchResponse: ResponseLike = noResponse;
     try {
-      fetchResponse = await fetch(normalizeUrl('/props', this.getBaseUrl()), {
-        headers: this.getHeaders(),
-        signal: AbortSignal.timeout(1000),
-      });
+      if (tunnelClient) {
+        fetchResponse = await tunnelClient.request({
+          targetUrl,
+          method: 'GET',
+          headers: this.getHeaders(),
+          abortSignal: requestSignal,
+        });
+      } else {
+        fetchResponse = await fetch(targetUrl, {
+          headers: this.getHeaders(),
+          signal: requestSignal,
+        });
+      }
     } catch {
       // Silently ignore network/timeout errors — will be handled by isErrorResponse
     }

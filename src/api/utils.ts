@@ -1,15 +1,16 @@
-// @ts-expect-error this package does not have typing
-import TextLineStream from 'textlinestream';
-
-// ponyfill for missing ReadableStream asyncIterator on Safari
-import { asyncIterator } from '@sec-ant/readable-stream/ponyfill/asyncIterator';
-
 import {
   Configuration,
   InferenceApiMessage,
   InferenceApiMessageContentPart,
   Message,
 } from '../types';
+// @ts-expect-error this package does not have typing
+import TextLineStream from 'textlinestream';
+
+// ponyfill for missing ReadableStream asyncIterator on Safari
+import { asyncIterator } from '@sec-ant/readable-stream/ponyfill/asyncIterator';
+
+import { SSEEvent } from './sseStream';
 
 /**
  * Converts application message format to API-compatible message structure.
@@ -77,6 +78,22 @@ export function normalizeMsgsForAPI(
       content: contentArr,
     };
   });
+}
+
+/**
+ * Parses individual chat-completion SSE events and returns their JSON payload.
+ * The OpenAI-compatible APIs emit `[DONE]` sentinels that are ignored by design.
+ */
+export function parseChatCompletionEvent(
+  event: Pick<SSEEvent, 'data'>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any | undefined {
+  const payload = event.data ?? '';
+  if (payload === '[DONE]') {
+    return undefined;
+  }
+
+  return JSON.parse(payload);
 }
 
 /**

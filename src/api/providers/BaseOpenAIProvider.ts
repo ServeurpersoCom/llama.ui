@@ -7,7 +7,12 @@ import {
   ModelProvider,
 } from '../../types';
 import { normalizeUrl } from '../../utils';
-import { getSSEStreamAsync, noResponse } from '../utils';
+import {
+  parseChatCompletionEvent,
+  getSSEStreamAsync,
+  noResponse,
+} from '../utils';
+import type { ResponseLike, WebSocketTunnelClient } from '../websocketTunnel';
 
 /**
  * Base implementation for OpenAI-compatible API providers.
@@ -50,6 +55,11 @@ export class BaseOpenAIProvider
   private apiKey: string;
 
   /**
+   * Optional WebSocket tunnel client used to forward API requests.
+   */
+  private readonly tunnelClient?: WebSocketTunnelClient;
+
+  /**
    * Cached list of available models fetched from the API.
    * @internal
    */
@@ -71,10 +81,15 @@ export class BaseOpenAIProvider
    *
    * @protected
    */
-  protected constructor(baseUrl?: string, apiKey: string = '') {
+  protected constructor(
+    baseUrl?: string,
+    apiKey: string = '',
+    tunnelClient?: WebSocketTunnelClient
+  ) {
     if (!baseUrl) throw new Error(`Base URL is not specified`);
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
+    this.tunnelClient = tunnelClient;
     this.lastUpdated = Date.now();
   }
 
@@ -87,8 +102,16 @@ export class BaseOpenAIProvider
    *
    * @static
    */
-  static new(baseUrl?: string, apiKey: string = '') {
-    return new BaseOpenAIProvider(baseUrl, apiKey);
+  static new(
+    baseUrl?: string,
+    apiKey: string = '',
+    tunnelClient?: WebSocketTunnelClient
+  ) {
+    return new BaseOpenAIProvider(baseUrl, apiKey, tunnelClient);
+  }
+
+  protected getTunnelClient(): WebSocketTunnelClient | undefined {
+    return this.tunnelClient;
   }
 
   /**
@@ -116,16 +139,25 @@ export class BaseOpenAIProvider
       return this.models;
     }
 
-    let fetchResponse = noResponse;
+    const targetUrl = normalizeUrl('/v1/models', this.getBaseUrl());
+    const tunnelClient = this.getTunnelClient();
+    const requestSignal = AbortSignal.timeout(1000);
+    let fetchResponse: ResponseLike = noResponse;
     try {
-      fetchResponse = await fetch(
-        normalizeUrl('/v1/models', this.getBaseUrl()),
-        {
+      if (tunnelClient) {
+        fetchResponse = await tunnelClient.request({
+          targetUrl,
           method: 'GET',
           headers: this.getHeaders(),
-          signal: AbortSignal.timeout(1000),
-        }
-      );
+          abortSignal: requestSignal,
+        });
+      } else {
+        fetchResponse = await fetch(targetUrl, {
+          method: 'GET',
+          headers: this.getHeaders(),
+          signal: requestSignal,
+        });
+      }
     } catch {
       // Silently ignore network/timeout errors; will be caught in isErrorResponse
     }
@@ -207,24 +239,36 @@ export class BaseOpenAIProvider
       params = { ...params, ...customOptions };
     }
 
+    const targetUrl = normalizeUrl('/v1/chat/completions', this.getBaseUrl());
+    const body = JSON.stringify(params);
+    const tunnelClient = this.getTunnelClient();
+
+    if (tunnelClient) {
+      return tunnelClient.stream({
+        targetUrl,
+        method: 'POST',
+        headers: this.getHeaders(),
+        body,
+        abortSignal,
+        parser: parseChatCompletionEvent,
+      });
+    }
+
     // Send request
-    let fetchResponse = noResponse;
+    let fetchResponse: ResponseLike = noResponse;
     try {
-      fetchResponse = await fetch(
-        normalizeUrl('/v1/chat/completions', this.getBaseUrl()),
-        {
-          method: 'POST',
-          headers: this.getHeaders(),
-          body: JSON.stringify(params),
-          signal: abortSignal,
-        }
-      );
+      fetchResponse = await fetch(targetUrl, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body,
+        signal: abortSignal,
+      });
     } catch {
       // Silently ignore network/timeout errors; will be caught in isErrorResponse
     }
 
     await this.isErrorResponse(fetchResponse);
-    return getSSEStreamAsync(fetchResponse);
+    return getSSEStreamAsync(fetchResponse as Response);
   }
 
   /**
@@ -262,7 +306,7 @@ export class BaseOpenAIProvider
    *
    * @protected
    */
-  protected async isErrorResponse(response: Response): Promise<void> {
+  protected async isErrorResponse(response: ResponseLike): Promise<void> {
     if (response.status === 200) return;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

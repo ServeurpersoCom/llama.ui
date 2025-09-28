@@ -1,5 +1,6 @@
 import { InferenceApiModel } from '../../types';
 import { CloudOpenAIProvider } from './BaseOpenAIProvider';
+import type { WebSocketTunnelClient } from '../websocketTunnel';
 
 /**
  * Represents a Google model metadata structure as returned by the API.
@@ -44,8 +45,12 @@ export class GoogleProvider extends CloudOpenAIProvider {
    * const provider = GoogleProvider.new(); // Uses default base URL and empty key
    * const provider = GoogleProvider.new('https://api.google.com/v1', 'my-key');
    */
-  static new(baseUrl?: string, apiKey: string = ''): GoogleProvider {
-    return new GoogleProvider(baseUrl, apiKey);
+  static new(
+    baseUrl?: string,
+    apiKey: string = '',
+    tunnelClient?: WebSocketTunnelClient
+  ): GoogleProvider {
+    return new GoogleProvider(baseUrl, apiKey, tunnelClient);
   }
 
   /** @inheritdoc */
