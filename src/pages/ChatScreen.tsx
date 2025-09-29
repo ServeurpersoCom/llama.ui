@@ -249,7 +249,7 @@ function PendingMessage({
       siblingCurrIdx: 0,
       isPending: true,
     },
-    300 // 3,33 FPS
+    67 // 15 FPS
   );
 
   if (!msg.msg) return null;
