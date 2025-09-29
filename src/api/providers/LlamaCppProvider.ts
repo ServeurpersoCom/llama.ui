@@ -2,6 +2,7 @@ import { isDev } from '../../config';
 import { InferenceApiModel, Modality } from '../../types';
 import { normalizeUrl } from '../../utils';
 import { noResponse } from '../utils';
+import { ResponseLike } from '../websocketTunnel';
 import { SelfHostedOpenAIProvider } from './BaseOpenAIProvider';
 
 /**
@@ -155,14 +156,28 @@ export class LlamaCppProvider extends SelfHostedOpenAIProvider {
    * @internal Used internally by {@link getModels} and {@link jsonToModel}.
    */
   private async getServerProps(): Promise<LlamaCppServerProps> {
-    let fetchResponse = noResponse;
-    try {
-      fetchResponse = await fetch(normalizeUrl('/props', this.getBaseUrl()), {
-        headers: this.getHeaders(),
-        signal: AbortSignal.timeout(1000),
-      });
-    } catch {
-      // Silently ignore network/timeout errors — will be handled by isErrorResponse
+    let fetchResponse: ResponseLike = noResponse;
+
+    if (!this.hasActiveTunnel()) {
+      try {
+        fetchResponse = await fetch(normalizeUrl('/props', this.getBaseUrl()), {
+          headers: this.getHeaders(),
+          signal: AbortSignal.timeout(1000),
+        });
+      } catch {
+        // Silently ignore network/timeout errors — will be handled by isErrorResponse
+      }
+    } else {
+      const signal = AbortSignal.timeout(1000);
+      try {
+        fetchResponse = await this.requestThroughTunnel('/props', {
+          method: 'GET',
+          headers: this.getHeaders(),
+          signal,
+        });
+      } catch {
+        // Silently ignore connection errors — will be handled by isErrorResponse
+      }
     }
 
     await this.isErrorResponse(fetchResponse);

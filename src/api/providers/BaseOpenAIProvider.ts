@@ -9,6 +9,11 @@ import {
 } from '../../types';
 import { normalizeUrl } from '../../utils';
 import { noResponse, processSSEStream } from '../utils';
+import {
+  ResponseLike,
+  TunnelSSEEvent,
+  WebSocketTunnelClient,
+} from '../websocketTunnel';
 
 /**
  * Base implementation for OpenAI-compatible API providers.
@@ -63,6 +68,15 @@ export class BaseOpenAIProvider
    */
   protected lastUpdated: number;
 
+  /** WebSocket tunnel client used when tunnel mode is enabled. */
+  private tunnelClient: WebSocketTunnelClient | null = null;
+
+  /** Currently configured WebSocket tunnel URL. */
+  private tunnelUrl: string | null = null;
+
+  /** Flag indicating whether WebSocket tunnel transport should be used. */
+  private tunnelEnabled = false;
+
   /**
    * Constructs a new BaseOpenAIProvider instance.
    *
@@ -92,6 +106,92 @@ export class BaseOpenAIProvider
     return new BaseOpenAIProvider(baseUrl, apiKey);
   }
 
+  configureTunnel(options?: {
+    useWebSocketTunnel?: boolean;
+    webSocketUrl?: string;
+  }): void {
+    if (!options?.useWebSocketTunnel || !options.webSocketUrl?.trim()) {
+      this.tunnelEnabled = false;
+      this.tunnelClient = null;
+      this.tunnelUrl = null;
+      return;
+    }
+
+    const trimmedUrl = options.webSocketUrl.trim();
+    if (this.tunnelUrl === trimmedUrl && this.tunnelClient) {
+      this.tunnelEnabled = true;
+      return;
+    }
+
+    try {
+      this.tunnelClient = new WebSocketTunnelClient(trimmedUrl);
+      this.tunnelUrl = trimmedUrl;
+      this.tunnelEnabled = true;
+    } catch (error) {
+      console.error('Failed to configure WebSocket tunnel:', error);
+      this.tunnelClient = null;
+      this.tunnelUrl = null;
+      this.tunnelEnabled = false;
+    }
+  }
+
+  protected hasActiveTunnel(): boolean {
+    return this.tunnelEnabled && this.tunnelClient !== null;
+  }
+
+  private headersToRecord(headers?: HeadersInit): Record<string, string> {
+    if (!headers) {
+      return {};
+    }
+    if (headers instanceof Headers) {
+      return Object.fromEntries(headers.entries());
+    }
+    if (Array.isArray(headers)) {
+      return headers.reduce<Record<string, string>>((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {});
+    }
+    return { ...(headers as Record<string, string>) };
+  }
+
+  protected async requestThroughTunnel(
+    path: string,
+    init: RequestInit & { signal?: AbortSignal }
+  ): Promise<ResponseLike> {
+    if (!this.tunnelClient) {
+      throw new Error('WebSocket tunnel is not configured');
+    }
+
+    const targetUrl = normalizeUrl(path, this.getBaseUrl());
+    const method = init.method ? init.method.toUpperCase() : 'GET';
+
+    return this.tunnelClient.request({
+      targetUrl,
+      method,
+      headers: this.headersToRecord(init.headers),
+      body: init.body as unknown,
+      abortSignal: init.signal,
+    });
+  }
+
+  private parseChatCompletionEvent(
+    event: TunnelSSEEvent
+  ): SSEChatCompletionMessage | undefined {
+    const raw = typeof event.data === 'string' ? event.data : '';
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed === '[DONE]') {
+      return undefined;
+    }
+
+    try {
+      return JSON.parse(trimmed) as SSEChatCompletionMessage;
+    } catch (error) {
+      console.warn('Failed to parse SSE data:', trimmed, error);
+      return undefined;
+    }
+  }
+
   /**
    * Retrieves the list of available models from the API.
    *
@@ -117,22 +217,39 @@ export class BaseOpenAIProvider
       return this.models;
     }
 
-    let fetchResponse = noResponse;
-    try {
-      fetchResponse = await fetch(
-        normalizeUrl('/v1/models', this.getBaseUrl()),
-        {
+    if (!this.hasActiveTunnel()) {
+      let fetchResponse = noResponse;
+      try {
+        fetchResponse = await fetch(
+          normalizeUrl('/v1/models', this.getBaseUrl()),
+          {
+            method: 'GET',
+            headers: this.getHeaders(),
+            signal: AbortSignal.timeout(1000),
+          }
+        );
+      } catch {
+        // Silently ignore network/timeout errors; will be caught in isErrorResponse
+      }
+      await this.isErrorResponse(fetchResponse);
+      const json = await fetchResponse.json();
+      this.models = this.jsonToModels(json.data);
+    } else {
+      const signal = AbortSignal.timeout(1000);
+      let tunnelResponse: ResponseLike = noResponse;
+      try {
+        tunnelResponse = await this.requestThroughTunnel('/v1/models', {
           method: 'GET',
           headers: this.getHeaders(),
-          signal: AbortSignal.timeout(1000),
-        }
-      );
-    } catch {
-      // Silently ignore network/timeout errors; will be caught in isErrorResponse
+          signal,
+        });
+      } catch {
+        // Silently ignore connection errors; handled by isErrorResponse
+      }
+      await this.isErrorResponse(tunnelResponse);
+      const json = await tunnelResponse.json();
+      this.models = this.jsonToModels((json as { data: unknown[] }).data);
     }
-    await this.isErrorResponse(fetchResponse);
-    const json = await fetchResponse.json();
-    this.models = this.jsonToModels(json.data);
 
     this.lastUpdated = Date.now();
 
@@ -200,24 +317,39 @@ export class BaseOpenAIProvider
       params = { ...params, ...customOptions };
     }
 
-    // Send request
-    let fetchResponse = noResponse;
-    try {
-      fetchResponse = await fetch(
-        normalizeUrl('/v1/chat/completions', this.getBaseUrl()),
-        {
-          method: 'POST',
-          headers: this.getHeaders(),
-          body: JSON.stringify(params),
-          signal: abortSignal,
-        }
-      );
-    } catch {
-      // Silently ignore network/timeout errors; will be caught in isErrorResponse
+    if (!this.hasActiveTunnel()) {
+      // Send request using standard fetch when tunnel is disabled
+      let fetchResponse = noResponse;
+      try {
+        fetchResponse = await fetch(
+          normalizeUrl('/v1/chat/completions', this.getBaseUrl()),
+          {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify(params),
+            signal: abortSignal,
+          }
+        );
+      } catch {
+        // Silently ignore network/timeout errors; will be caught in isErrorResponse
+      }
+
+      await this.isErrorResponse(fetchResponse);
+      return processSSEStream<SSEChatCompletionMessage>(fetchResponse);
     }
 
-    await this.isErrorResponse(fetchResponse);
-    return processSSEStream<SSEChatCompletionMessage>(fetchResponse);
+    if (!this.tunnelClient) {
+      throw new Error('WebSocket tunnel is not configured');
+    }
+
+    return this.tunnelClient.stream<SSEChatCompletionMessage>({
+      targetUrl: normalizeUrl('/v1/chat/completions', this.getBaseUrl()),
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(params),
+      abortSignal,
+      parser: (event) => this.parseChatCompletionEvent(event),
+    });
   }
 
   /**
@@ -255,7 +387,7 @@ export class BaseOpenAIProvider
    *
    * @protected
    */
-  protected async isErrorResponse(response: Response): Promise<void> {
+  protected async isErrorResponse(response: ResponseLike): Promise<void> {
     if (response.status === 200) return;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -153,7 +153,11 @@ export const InferenceContextProvider = ({
     const newProvider = getInferenceProvider(
       config.provider,
       config.baseUrl,
-      config.apiKey
+      config.apiKey,
+      {
+        useWebSocketTunnel: config.useWebSocketTunnel,
+        webSocketUrl: config.webSocketUrl,
+      }
     );
     dispatch({ type: InferenceActionTypes.SET_PROVIDER, payload: newProvider });
   }, []);
@@ -171,7 +175,11 @@ export const InferenceContextProvider = ({
       const newProvider = getInferenceProvider(
         config.provider,
         config.baseUrl,
-        config.apiKey
+        config.apiKey,
+        {
+          useWebSocketTunnel: config.useWebSocketTunnel,
+          webSocketUrl: config.webSocketUrl,
+        }
       );
       let newModels = noModels;
       try {
