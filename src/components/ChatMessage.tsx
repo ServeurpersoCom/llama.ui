@@ -186,14 +186,19 @@ export default memo(function ChatMessage({
           {/* render message as markdown */}
           {!isEditing && (!!content || !!reasoning_content) && (
             <div dir="auto" tabIndex={0}>
-              {!!reasoning_content && (
+              {isAssistant && !!reasoning_content && (
                 <ThoughtProcess
                   isThinking={isThinking}
                   content={reasoning_content}
                 />
               )}
 
-              {!!content && <MarkdownDisplay content={content} />}
+              {!!content &&
+                (isAssistant ? (
+                  <MarkdownDisplay content={content} />
+                ) : (
+                  <p className="whitespace-pre-wrap break-words">{content}</p>
+                ))}
             </div>
           )}
         </div>
