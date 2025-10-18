@@ -1,9 +1,9 @@
 {
   "provider": "llama-cpp",
-  "baseUrl": "",
+  "baseUrl": "https://www.serveurperso.com/ia",
   "apiKey": "",
-  "model": "",
-  "systemMessage": "",
+  "model": "Llama-3_3-Nemotron-Super-49B-v1_5",
+  "systemMessage": "Tu es un assistant utile.",
   "initials": "You",
   "showRawUserMessage": false,
   "showRawAssistantMessage": false,
