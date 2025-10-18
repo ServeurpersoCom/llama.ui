@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import './services/chat-tunnel';
 import './i18n';
 import './index.scss';
 
